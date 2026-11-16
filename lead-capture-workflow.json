@@ -1,0 +1,213 @@
+{
+  "name": "Lead Capture — Form to Sheets + Email",
+  "nodes": [
+    {
+      "id": "a1-form-trigger",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "Contact Form",
+        "formDescription": "Leave your details and we will call you back.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Business",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": [
+                {
+                  "option": "Restaurant"
+                },
+                {
+                  "option": "Clinic"
+                },
+                {
+                  "option": "Shop"
+                },
+                {
+                  "option": "Services"
+                }
+              ]
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "formSubmissionText": "Thank you! We received your message."
+        }
+      }
+    },
+    {
+      "id": "a2-clean",
+      "name": "Clean Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "name",
+              "type": "string",
+              "value": "={{ $json.Name.trim() }}"
+            },
+            {
+              "id": "s2",
+              "name": "phone",
+              "type": "string",
+              "value": "={{ $json.Phone.trim().replaceAll(' ', '') }}"
+            },
+            {
+              "id": "s3",
+              "name": "business",
+              "type": "string",
+              "value": "={{ $json.Business }}"
+            },
+            {
+              "id": "s4",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.Message }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3-sheets",
+      "name": "Save to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_ID",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Business": "={{ $json.business }}",
+            "Message": "={{ $json.message }}"
+          },
+          "matchingColumns": [
+            "Timestamp",
+            "Name",
+            "Phone",
+            "Business",
+            "Message"
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2": {
+          "id": null,
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "a4-gmail",
+      "name": "Notify by Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "REPLACE_WITH_OWNER_EMAIL",
+        "subject": "=New lead: {{ $('Clean Data').item.json.name }} — {{ $('Clean Data').item.json.business }}",
+        "emailBody": "=New lead from your website form:\n\nName: {{ $('Clean Data').item.json.name }}\nPhone/WhatsApp: {{ $('Clean Data').item.json.phone }}\nBusiness type: {{ $('Clean Data').item.json.business }}\nMessage: {{ $('Clean Data').item.json.message }}\n\nSaved automatically to Google Sheets.",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": null,
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Save to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Notify by Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

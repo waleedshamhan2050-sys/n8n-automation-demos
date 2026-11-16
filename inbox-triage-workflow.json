@@ -1,0 +1,161 @@
+{
+  "name": "Inbox Triage — Classify Gmail + Log to Sheets",
+  "nodes": [
+    {
+      "id": "b1-gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {},
+        "options": {
+          "downloadAttachments": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": null,
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "b2-classify",
+      "name": "Classify Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const subject = ($json.subject || '').toLowerCase();\nconst body = (($json.snippet || '') + ' ' + ($json.text || '')).toLowerCase();\nconst text = subject + ' ' + body;\nlet category = 'general';\nif (/urgent|complaint|refund|angry|مشكلة|شكوى|عاجل/.test(text)) category = 'urgent';\nelse if (/price|quote|order|buy|سعر|طلب|شراء/.test(text)) category = 'sales';\nelse if (/help|how|support|دعم|مساعدة|كيف/.test(text)) category = 'support';\nconst replies = {\n  urgent: 'Thank you for writing — we have flagged your message as urgent and a team member will reply within 2 hours.',\n  sales: 'Thank you for your interest! Here is our price list — tell us which option suits you and we will prepare an offer.',\n  support: 'Thank you for reaching out. Could you share a screenshot or the exact steps? We will guide you from there.',\n  general: 'Thank you for your message. We have received it and will reply within one working day.',\n};\nreturn [{ json: { from: $json.from?.value || $json.from || '', subject: $json.subject || '',\n  snippet: $json.snippet || '', category, draftReply: replies[category], receivedAt: $now.toISO() } }];"
+      }
+    },
+    {
+      "id": "b3-sheets",
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_SHEET_ID",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.receivedAt }}",
+            "From": "={{ $json.from }}",
+            "Subject": "={{ $json.subject }}",
+            "Category": "={{ $json.category }}",
+            "Draft Reply": "={{ $json.draftReply }}"
+          },
+          "matchingColumns": [
+            "Timestamp",
+            "From",
+            "Subject",
+            "Category",
+            "Draft Reply"
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2": {
+          "id": null,
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b4-gmail",
+      "name": "Send Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Classify Email').item.json.from }}",
+        "subject": "=Re: {{ $('Classify Email').item.json.subject }}",
+        "emailBody": "=Hi,\n\n{{ $('Classify Email').item.json.draftReply }}\n\nBest regards",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": null,
+          "name": "Gmail account"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Log to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

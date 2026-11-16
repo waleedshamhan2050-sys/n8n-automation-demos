@@ -1,0 +1,121 @@
+{
+  "name": "Lead Capture — LOCAL TEST (Webhook)",
+  "nodes": [
+    {
+      "id": "t1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "t2",
+      "name": "Clean Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "name",
+              "type": "string",
+              "value": "={{ $json.body.name.trim() }}"
+            },
+            {
+              "id": "s2",
+              "name": "phone",
+              "type": "string",
+              "value": "={{ $json.body.phone.trim().replaceAll(' ','') }}"
+            },
+            {
+              "id": "s3",
+              "name": "business",
+              "type": "string",
+              "value": "={{ $json.body.business }}"
+            },
+            {
+              "id": "s4",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.body.message }}"
+            },
+            {
+              "id": "s5",
+              "name": "receivedAt",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "id": "s6",
+              "name": "wouldSaveTo",
+              "type": "string",
+              "value": "Google Sheets: Leads - Demo"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "t3",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({status: 'ok', lead: $json}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

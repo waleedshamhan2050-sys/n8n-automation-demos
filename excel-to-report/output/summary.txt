@@ -1,0 +1,14 @@
+Excel to Report — summary
+Generated: 2026-11-11 22:13
+
+Files processed: 3
+Rows read: 8
+Rows in report: 6
+Empty rows skipped: 1
+Duplicate rows removed: 1
+
+By business type:
+  Clinic: 2
+  Restaurant: 2
+  Services: 1
+  Shop: 1
